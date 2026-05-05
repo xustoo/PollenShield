@@ -1,0 +1,160 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: pollenshield-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    depends_on:
+      - api-gateway
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: pollenshield-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      USER_PROFILE_SERVICE_URL: http://user-profile-service:3001
+      ENVIRONMENTAL_DATA_SERVICE_URL: http://environmental-data-service:3002
+      SYMPTOM_REPORT_SERVICE_URL: http://symptom-report-service:3003
+      ALLERGY_RISK_SERVICE_URL: http://allergy-risk-service:3004
+      ROUTE_RECOMMENDATION_SERVICE_URL: http://route-recommendation-service:3005
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+    depends_on:
+      - user-profile-service
+      - environmental-data-service
+      - symptom-report-service
+      - allergy-risk-service
+      - route-recommendation-service
+      - notification-service
+
+  user-profile-service:
+    build:
+      context: .
+      dockerfile: user-profile-service/Dockerfile
+    container_name: pollenshield-user-profile-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://pollenshield:pollenshield@postgres:5432/pollenshield
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  environmental-data-service:
+    build:
+      context: .
+      dockerfile: environmental-data-service/Dockerfile
+    container_name: pollenshield-environmental-data-service
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      MONGODB_URI: mongodb://mongodb:27017/pollenshield_environment
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  symptom-report-service:
+    build:
+      context: .
+      dockerfile: symptom-report-service/Dockerfile
+    container_name: pollenshield-symptom-report-service
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://pollenshield:pollenshield@postgres:5432/pollenshield
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  allergy-risk-service:
+    build:
+      context: .
+      dockerfile: allergy-risk-service/Dockerfile
+    container_name: pollenshield-allergy-risk-service
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+
+  route-recommendation-service:
+    build:
+      context: .
+      dockerfile: route-recommendation-service/Dockerfile
+    container_name: pollenshield-route-recommendation-service
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      ALLERGY_RISK_SERVICE_URL: http://allergy-risk-service:3004
+    depends_on:
+      - allergy-risk-service
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: pollenshield-notification-service
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      MONGODB_URI: mongodb://mongodb:27017/pollenshield_notifications
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      - mongodb
+      - rabbitmq
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pollenshield-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pollenshield
+      POSTGRES_PASSWORD: pollenshield
+      POSTGRES_DB: pollenshield
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:7
+    container_name: pollenshield-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: pollenshield-redis
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: pollenshield-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  postgres_data:
+  mongodb_data:
