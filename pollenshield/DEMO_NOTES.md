@@ -17,7 +17,7 @@ Architecturally, the system uses an API Gateway as the only client entry point. 
 - Environmental Data Service: stores pollen/weather observations in MongoDB and publishes environmental update events.
 - Symptom Report Service: stores allergy symptom reports in PostgreSQL and publishes symptom report events.
 - Allergy Risk Service: calculates deterministic allergy risk, caches scores in Redis, consumes environmental/symptom events, and publishes risk events.
-- Route Recommendation Service: creates mock route alternatives and calls the risk service to choose the lowest exposure route.
+- Route Recommendation Service: uses Google Routes/Pollen APIs when configured, otherwise mock route alternatives, and chooses the lowest pollen exposure route.
 - Notification Service: consumes high-risk events and stores notifications in MongoDB.
 - Frontend: React + TypeScript demo console that calls only the API Gateway.
 
@@ -34,6 +34,10 @@ Architecturally, the system uses an API Gateway as the only client entry point. 
 9. Request a route recommendation.
 10. Fetch notifications and mark one as read if available.
 
+Route feature story:
+
+Kullanıcı A noktasından B noktasına gitmek ister. Google gerçek yürüyüş rotalarını üretir. PollenShield her rota segmentini lokal risk skorlarıyla ve Google Pollen API verisiyle puanlar, sonra en az polen maruziyetli rotayı önerir. API key olmayan demo ortamında aynı ekran mock rota fallback ile çalışmaya devam eder.
+
 ## 5-Minute Demo Script
 
 1. Show `docker compose up --build` and explain that the full distributed system starts with one command.
@@ -41,7 +45,7 @@ Architecturally, the system uses an API Gateway as the only client entry point. 
 3. Open System Status and check the gateway health/routing table.
 4. Open Run Demo Flow and click the button. Explain each step as it turns from Pending to Success.
 5. Open Allergy Risk Calculation and point to the numeric score, level, and 0-100 visual bar.
-6. Open Route Recommendation and show the recommended route versus alternatives.
+6. Open Route Recommendation and show the pollen-minimized route versus alternatives.
 7. Open Notifications and show the high-risk alert card and read/unread state.
 8. Briefly open `ARCHITECTURE.md` or the README links if the instructor asks for diagrams/endpoints.
 

@@ -284,6 +284,10 @@ label {
   min-height: auto;
 }
 
+.full-span {
+  grid-column: 1 / -1;
+}
+
 .button-row,
 .inline-controls {
   display: flex;
@@ -407,6 +411,35 @@ label {
   padding: 5px 8px;
 }
 
+.segment-list span.low {
+  background: #dff2e6;
+  color: #22643f;
+}
+
+.segment-list span.medium {
+  background: #fff2cf;
+  color: #7a5513;
+}
+
+.segment-list span.high {
+  background: #ffe5d8;
+  color: #974017;
+}
+
+.segment-list span.critical {
+  background: #ffe0e3;
+  color: #8a1e2a;
+}
+
+.route-map {
+  width: 100%;
+  min-height: 380px;
+  border: 1px solid #d3ded7;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
 .recommended-route {
   margin-bottom: 14px;
 }
@@ -447,4 +480,3 @@ label {
     grid-template-columns: 1fr;
   }
 }
-

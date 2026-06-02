@@ -8,6 +8,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_BASE_URL: http://localhost:3000
+      VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
     depends_on:
       - api-gateway
 
@@ -104,6 +105,7 @@ services:
     environment:
       PORT: 3005
       ALLERGY_RISK_SERVICE_URL: http://allergy-risk-service:3004
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
     depends_on:
       - allergy-risk-service
 

@@ -216,15 +216,17 @@ Sample response:
 
 | Method | Path | Description |
 | --- | --- | --- |
-| POST | `/api/routes/recommend` | Recommend lowest-risk route |
+| POST | `/api/routes/recommend` | Recommend lowest-risk route, using Google Routes/Pollen API when enabled |
 | GET | `/api/routes/:routeId/risk` | Mock route risk information |
 
 Recommend body:
 
 ```json
 {
-  "startLocation": "home",
-  "destinationLocation": "gazi-university",
+  "startLocation": "Ankara Bahçelievler",
+  "destinationLocation": "Gazi University",
+  "travelMode": "WALK",
+  "useGoogleRoutes": true,
   "candidateLocationIds": [
     "ankara-bahcelievler",
     "ankara-emek",
@@ -240,14 +242,29 @@ Sample response:
   "success": true,
   "data": {
     "recommendedRoute": {
-      "routeId": "route-1",
-      "totalRiskScore": 74,
-      "estimatedDurationMinutes": 15
+      "routeId": "google-route-1",
+      "totalRiskScore": 42,
+      "averageRiskScore": 42,
+      "estimatedDurationMinutes": 22,
+      "distanceMeters": 1800,
+      "source": "google",
+      "encodedPolyline": "encoded-route-polyline",
+      "segments": [
+        {
+          "locationId": "geo:39.93:32.85",
+          "riskScore": 40,
+          "lat": 39.93,
+          "lng": 32.85,
+          "distanceMeters": 240
+        }
+      ]
     },
     "alternatives": []
   }
 }
 ```
+
+If `GOOGLE_MAPS_API_KEY` is not configured or Google lookup fails, the endpoint safely falls back to mock route alternatives scored with cached Allergy Risk Service data or a neutral score.
 
 ## Notification Service
 
@@ -274,4 +291,3 @@ Sample response:
 }
 
 ```
-

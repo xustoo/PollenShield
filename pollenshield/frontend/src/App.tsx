@@ -32,8 +32,12 @@ type RouteRecommendation = {
   startLocation: string;
   destinationLocation: string;
   totalRiskScore: number;
+  averageRiskScore: number;
   estimatedDurationMinutes: number;
-  segments: Array<{ locationId: string; riskScore: number }>;
+  distanceMeters: number;
+  encodedPolyline?: string;
+  source: "google" | "mock";
+  segments: Array<{ locationId: string; riskScore: number; lat?: number; lng?: number; distanceMeters?: number }>;
 };
 
 type RouteResponse = {
@@ -78,6 +82,8 @@ const demoData = {
   averageSymptomIntensity: 6,
   startLocation: "home",
   destinationLocation: "gazi-university",
+  googleStartLocation: "Ankara Bahçelievler",
+  googleDestinationLocation: "Gazi University",
   candidateLocationIds: ["ankara-bahcelievler", "ankara-emek", "ankara-bestepe"]
 };
 
@@ -198,8 +204,10 @@ function App() {
   });
 
   const [routeForm, setRouteForm] = useState({
-    startLocation: demoData.startLocation,
-    destinationLocation: demoData.destinationLocation,
+    startLocation: demoData.googleStartLocation,
+    destinationLocation: demoData.googleDestinationLocation,
+    travelMode: "WALK",
+    useGoogleRoutes: true,
     candidateLocationIds: demoData.candidateLocationIds.join(", ")
   });
 
@@ -374,6 +382,8 @@ function App() {
         body: JSON.stringify({
           startLocation: routeForm.startLocation,
           destinationLocation: routeForm.destinationLocation,
+          travelMode: routeForm.travelMode,
+          useGoogleRoutes: routeForm.useGoogleRoutes,
           candidateLocationIds: splitCommaText(routeForm.candidateLocationIds)
         })
       })
@@ -665,9 +675,11 @@ function App() {
               <p>Calls the Risk Service for route segments and selects the route with the lowest total risk.</p>
             </div>
             <form className="form-grid" onSubmit={recommendRoute}>
-              <label>startLocation<input value={routeForm.startLocation} onChange={(e) => setRouteForm({ ...routeForm, startLocation: e.target.value })} /></label>
-              <label>destinationLocation<input value={routeForm.destinationLocation} onChange={(e) => setRouteForm({ ...routeForm, destinationLocation: e.target.value })} /></label>
-              <label>candidateLocationIds<input value={routeForm.candidateLocationIds} onChange={(e) => setRouteForm({ ...routeForm, candidateLocationIds: e.target.value })} /></label>
+              <label>Start address<input value={routeForm.startLocation} onChange={(e) => setRouteForm({ ...routeForm, startLocation: e.target.value })} /></label>
+              <label>Destination address<input value={routeForm.destinationLocation} onChange={(e) => setRouteForm({ ...routeForm, destinationLocation: e.target.value })} /></label>
+              <label>Travel mode<select value={routeForm.travelMode} onChange={(e) => setRouteForm({ ...routeForm, travelMode: e.target.value })}><option value="WALK">Walk</option><option value="DRIVE">Drive</option><option value="BICYCLE">Bicycle</option><option value="TRANSIT">Transit</option></select></label>
+              <label className="checkbox-row"><input type="checkbox" checked={routeForm.useGoogleRoutes} onChange={(e) => setRouteForm({ ...routeForm, useGoogleRoutes: e.target.checked })} /> Use Google Routes</label>
+              <label className="full-span">Fallback candidateLocationIds<input value={routeForm.candidateLocationIds} onChange={(e) => setRouteForm({ ...routeForm, candidateLocationIds: e.target.value })} /></label>
               <button type="submit">Recommend Safest Route</button>
             </form>
             <RouteDisplay result={routeResult} />
@@ -704,7 +716,7 @@ function App() {
                 </article>
               ))}
             </div>
-            {!notifications.length && notificationState.data && <div className="notice muted">No notifications found yet.</div>}
+            {!notifications.length && Boolean(notificationState.data) && <div className="notice muted">No notifications found yet.</div>}
           </section>
         )}
 
@@ -774,14 +786,18 @@ function RouteDisplay({ result }: { result: RouteResponse | null }) {
 
   return (
     <section className="route-display">
+      <RouteMap result={result} />
       <article className="recommended-route">
         <h3>Recommended Route: {result.recommendedRoute.routeId}</h3>
+        <p>Average pollen risk: <strong>{result.recommendedRoute.averageRiskScore}/100</strong></p>
         <p>Total risk score: <strong>{result.recommendedRoute.totalRiskScore}</strong></p>
         <p>Estimated duration: <strong>{result.recommendedRoute.estimatedDurationMinutes} minutes</strong></p>
-        <p>Selected because it has the lowest total allergy exposure among generated alternatives.</p>
+        <p>Distance: <strong>{formatDistance(result.recommendedRoute.distanceMeters)}</strong></p>
+        <p>Source: <strong>{result.recommendedRoute.source}</strong></p>
+        <p>Selected because it minimizes pollen exposure first and uses shorter duration as a tie breaker.</p>
         <div className="segment-list">
           {result.recommendedRoute.segments.map((segment) => (
-            <span key={segment.locationId}>{segment.locationId}: {segment.riskScore}</span>
+            <span key={segment.locationId} className={riskTone(segment.riskScore)}>{segment.locationId}: {segment.riskScore}</span>
           ))}
         </div>
       </article>
@@ -789,11 +805,14 @@ function RouteDisplay({ result }: { result: RouteResponse | null }) {
         {result.alternatives.map((route) => (
           <article key={route.routeId} className="info-card">
             <h3>{route.routeId}</h3>
+            <p>Average risk: {route.averageRiskScore}/100</p>
             <p>Total risk: {route.totalRiskScore}</p>
             <p>Duration: {route.estimatedDurationMinutes} min</p>
+            <p>Distance: {formatDistance(route.distanceMeters)}</p>
+            <p>Source: {route.source}</p>
             <div className="segment-list">
               {route.segments.map((segment) => (
-                <span key={`${route.routeId}-${segment.locationId}`}>{segment.locationId}: {segment.riskScore}</span>
+                <span key={`${route.routeId}-${segment.locationId}`} className={riskTone(segment.riskScore)}>{segment.locationId}: {segment.riskScore}</span>
               ))}
             </div>
           </article>
@@ -803,5 +822,176 @@ function RouteDisplay({ result }: { result: RouteResponse | null }) {
   );
 }
 
-export default App;
+const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
+const googleMapsScriptId = "google-maps-script";
+
+const loadGoogleMaps = () =>
+  new Promise<void>((resolve, reject) => {
+    if ((window as any).google?.maps) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.getElementById(googleMapsScriptId) as HTMLScriptElement | null;
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve());
+      existingScript.addEventListener("error", () => reject(new Error("Google Maps could not be loaded")));
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = googleMapsScriptId;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Google Maps could not be loaded"));
+    document.head.appendChild(script);
+  });
+
+const decodePolyline = (encoded: string): Array<{ lat: number; lng: number }> => {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const coordinates: Array<{ lat: number; lng: number }> = [];
+
+  while (index < encoded.length) {
+    let result = 0;
+    let shift = 0;
+    let byte = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    result = 0;
+    shift = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    coordinates.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+
+  return coordinates;
+};
+
+const formatDistance = (meters: number) => (meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`);
+
+const riskTone = (score: number) => {
+  if (score <= 25) return "low";
+  if (score <= 50) return "medium";
+  if (score <= 75) return "high";
+  return "critical";
+};
+
+function RouteMap({ result }: { result: RouteResponse }) {
+  const mapElementId = "route-map";
+  const [mapError, setMapError] = useState("");
+  const hasPolyline = result.alternatives.some((route) => route.encodedPolyline);
+
+  useEffect(() => {
+    if (!googleMapsApiKey || !hasPolyline) {
+      return;
+    }
+
+    let cancelled = false;
+
+    loadGoogleMaps()
+      .then(() => {
+        if (cancelled) {
+          return;
+        }
+
+        const google = (window as any).google;
+        const mapElement = document.getElementById(mapElementId);
+        if (!google?.maps || !mapElement) {
+          return;
+        }
+
+        const routePaths = result.alternatives
+          .map((route) => ({
+            route,
+            path: route.encodedPolyline ? decodePolyline(route.encodedPolyline) : []
+          }))
+          .filter(({ path }) => path.length > 0);
+
+        const firstPath = routePaths[0]?.path;
+        const map = new google.maps.Map(mapElement, {
+          center: firstPath?.[0] || { lat: 39.9334, lng: 32.8597 },
+          zoom: 13,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false
+        });
+        const bounds = new google.maps.LatLngBounds();
+
+        routePaths.forEach(({ route, path }) => {
+          const isRecommended = route.routeId === result.recommendedRoute.routeId;
+          const polyline = new google.maps.Polyline({
+            path,
+            geodesic: true,
+            strokeColor: isRecommended ? "#2f8a57" : route.averageRiskScore > 60 ? "#c75724" : "#7a8b82",
+            strokeOpacity: isRecommended ? 0.95 : 0.55,
+            strokeWeight: isRecommended ? 6 : 4
+          });
+          polyline.setMap(map);
+          path.forEach((point) => bounds.extend(point));
+
+          route.segments
+            .filter((segment) => typeof segment.lat === "number" && typeof segment.lng === "number")
+            .forEach((segment) => {
+              new google.maps.Circle({
+                map,
+                center: { lat: segment.lat, lng: segment.lng },
+                radius: 45,
+                strokeWeight: 0,
+                fillColor:
+                  segment.riskScore <= 25
+                    ? "#2f8a57"
+                    : segment.riskScore <= 50
+                      ? "#b6821d"
+                      : segment.riskScore <= 75
+                        ? "#c75724"
+                        : "#a92734",
+                fillOpacity: isRecommended ? 0.6 : 0.28
+              });
+            });
+        });
+
+        if (!bounds.isEmpty()) {
+          map.fitBounds(bounds);
+        }
+      })
+      .catch((error) => setMapError(error instanceof Error ? error.message : "Google Maps could not be loaded"));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasPolyline, result]);
+
+  if (!googleMapsApiKey) {
+    return <div className="notice muted">Map is disabled because VITE_GOOGLE_MAPS_API_KEY is not configured.</div>;
+  }
+
+  if (!hasPolyline) {
+    return <div className="notice muted">Map will appear when Google route polylines are available.</div>;
+  }
+
+  return (
+    <>
+      <div id={mapElementId} className="route-map" aria-label="Recommended and alternative route map" />
+      {mapError && <div className="notice error">{mapError}</div>}
+    </>
+  );
+}
+
+export default App;

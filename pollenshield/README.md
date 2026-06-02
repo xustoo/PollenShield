@@ -57,7 +57,7 @@ PollenShield is an original microservice-based software solution. It is not a ge
 | Environmental Data Service | Temperature, humidity, wind, pollen observations | MongoDB | 3002 |
 | Symptom Report Service | User symptom reports by location and region | PostgreSQL | 3003 |
 | Allergy Risk Prediction Service | Risk scoring, Redis cache, risk events | Redis | 3004 |
-| Route Recommendation Service | Mock route alternatives and safest route selection | None | 3005 |
+| Route Recommendation Service | Google-backed or mock route alternatives and pollen-minimized route selection | None | 3005 |
 | Notification Service | High-risk and requested notifications | MongoDB | 3006 |
 
 Infrastructure:
@@ -74,6 +74,17 @@ Infrastructure:
 cd pollenshield
 docker compose up --build
 ```
+
+Optional Google Maps integration:
+
+```bash
+cp .env.example .env
+# Fill these in .env:
+# GOOGLE_MAPS_API_KEY=your_google_maps_backend_key
+# VITE_GOOGLE_MAPS_API_KEY=your_google_maps_frontend_key
+```
+
+When `GOOGLE_MAPS_API_KEY` is present, the Route Recommendation Service can call Google Routes API for real route alternatives and Google Pollen API for segment pollen risk. Without the key, the service keeps the deterministic mock route fallback for classroom demos.
 
 Open the frontend:
 
@@ -99,7 +110,7 @@ The complete class demo flow is:
 6. Recalculate Risk
 7. Get Risk By Location
 8. Get Risk Forecast
-9. Recommend Route
+9. Recommend Pollen-Minimized Route
 10. Get User Notifications
 11. Mark Notification As Read
 
@@ -392,8 +403,10 @@ curl -v http://localhost:3000/api/risk/forecast/ankara-bahcelievler
 curl -v -X POST http://localhost:3000/api/routes/recommend \
   -H "Content-Type: application/json" \
   -d '{
-    "startLocation": "home",
-    "destinationLocation": "gazi-university",
+    "startLocation": "Ankara Bahçelievler",
+    "destinationLocation": "Gazi University",
+    "travelMode": "WALK",
+    "useGoogleRoutes": true,
     "candidateLocationIds": [
       "ankara-bahcelievler",
       "ankara-emek",

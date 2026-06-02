@@ -1,4 +1,4 @@
-import { allergyRiskServiceUrl } from "./services";
+import { allergyRiskServiceUrl, googleMapsApiKey } from "./services";
 
 const safeHost = (value: string): string => {
   try {
@@ -11,6 +11,6 @@ const safeHost = (value: string): string => {
 export const debugConfig = {
   service: "route-recommendation-service",
   port: process.env.PORT || 3005,
-  allergyRiskServiceHost: safeHost(allergyRiskServiceUrl)
+  allergyRiskServiceHost: safeHost(allergyRiskServiceUrl),
+  googleRoutesEnabled: Boolean(googleMapsApiKey)
 };
-

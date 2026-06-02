@@ -43,10 +43,17 @@ export interface RouteRecommendation {
   startLocation: string;
   destinationLocation: string;
   totalRiskScore: number;
+  averageRiskScore: number;
   estimatedDurationMinutes: number;
+  distanceMeters: number;
+  encodedPolyline?: string;
+  source: "google" | "mock";
   segments: Array<{
     locationId: string;
     riskScore: number;
+    lat?: number;
+    lng?: number;
+    distanceMeters?: number;
   }>;
 }
 

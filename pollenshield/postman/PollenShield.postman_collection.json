@@ -603,7 +603,7 @@
       "name": "Route Recommendation Service",
       "item": [
         {
-          "name": "Recommend Route",
+          "name": "Recommend Pollen-Minimized Route",
           "request": {
             "method": "POST",
             "header": [
@@ -614,7 +614,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"startLocation\": \"home\",\n  \"destinationLocation\": \"gazi-university\",\n  \"candidateLocationIds\": [\n    \"ankara-bahcelievler\",\n    \"ankara-emek\",\n    \"ankara-bestepe\"\n  ]\n}"
+              "raw": "{\n  \"startLocation\": \"{{startAddress}}\",\n  \"destinationLocation\": \"{{destinationAddress}}\",\n  \"travelMode\": \"WALK\",\n  \"useGoogleRoutes\": true,\n  \"candidateLocationIds\": [\n    \"ankara-bahcelievler\",\n    \"ankara-emek\",\n    \"ankara-bestepe\"\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/routes/recommend",
@@ -642,6 +642,10 @@
                   "const recommendedRoute = json.recommendedRoute;",
                   "pm.test('Response contains recommendedRoute', function () {",
                   "  pm.expect(recommendedRoute).to.be.an('object');",
+                  "});",
+                  "pm.test('Route response includes risk and source metadata', function () {",
+                  "  pm.expect(recommendedRoute.averageRiskScore).to.be.a('number');",
+                  "  pm.expect(recommendedRoute.source).to.be.oneOf(['google', 'mock']);",
                   "});",
                   "if (recommendedRoute && recommendedRoute.routeId) {",
                   "  pm.environment.set('routeId', recommendedRoute.routeId);",
@@ -1123,7 +1127,7 @@
           ]
         },
         {
-          "name": "9. Recommend Route",
+          "name": "9. Recommend Pollen-Minimized Route",
           "request": {
             "method": "POST",
             "header": [
@@ -1134,7 +1138,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"startLocation\": \"home\",\n  \"destinationLocation\": \"gazi-university\",\n  \"candidateLocationIds\": [\n    \"ankara-bahcelievler\",\n    \"ankara-emek\",\n    \"ankara-bestepe\"\n  ]\n}"
+              "raw": "{\n  \"startLocation\": \"{{startAddress}}\",\n  \"destinationLocation\": \"{{destinationAddress}}\",\n  \"travelMode\": \"WALK\",\n  \"useGoogleRoutes\": true,\n  \"candidateLocationIds\": [\n    \"ankara-bahcelievler\",\n    \"ankara-emek\",\n    \"ankara-bestepe\"\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/routes/recommend",
@@ -1162,6 +1166,10 @@
                   "const recommendedRoute = json.recommendedRoute;",
                   "pm.test('Response contains recommendedRoute', function () {",
                   "  pm.expect(recommendedRoute).to.be.an('object');",
+                  "});",
+                  "pm.test('Route response includes risk and source metadata', function () {",
+                  "  pm.expect(recommendedRoute.averageRiskScore).to.be.a('number');",
+                  "  pm.expect(recommendedRoute.source).to.be.oneOf(['google', 'mock']);",
                   "});",
                   "if (recommendedRoute && recommendedRoute.routeId) {",
                   "  pm.environment.set('routeId', recommendedRoute.routeId);",
